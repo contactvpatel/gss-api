@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <!-- AV0029/AV0030: one "v1" OpenAPI document (Microsoft.AspNetCore.OpenApi), not per-version documents. -->
+    <NoWarn>$(NoWarn);AV0029;AV0030</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="ApiPipeline.NET" />
+    <PackageReference Include="ApiPipeline.NET.Versioning" />
+    <PackageReference Include="Asp.Versioning.Mvc" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
+    <PackageReference Include="Caching.NET" />
+    <PackageReference Include="CodeStyle.NET" />
+    <PackageReference Include="DotEnv.Net" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="HealthChecks.NET" />
+    <PackageReference Include="HealthChecks.NET.Redis" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="OpenTelemetry.NET" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GSS.Business\GSS.Business.csproj" />
+    <ProjectReference Include="..\GSS.Infrastructure\GSS.Infrastructure.csproj" />
+    <ProjectReference Include="..\GSS.Util\GSS.Util.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Coverage settings (see .docs/testing/testing-comprehensive-guide.md). Integration tests are excluded. -->
+<RunSettings>
+  <RunConfiguration>
+    <TestCaseFilter>Category!=Integration</TestCaseFilter>
+  </RunConfiguration>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+
+          <!-- All production code under ../src; untested code is not excluded. -->
+          <Exclude>[*.Tests]*,[*.Test]*,[*UnitTests]*,[*IntegrationTests]*</Exclude>
+
+          <!-- Generated and opted-out code. -->
+          <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+
+          <!-- Build output, generated sources and DbUp SQL folders. -->
+          <ExcludeByFile>**/obj/**,**/*.g.cs,**/*.generated.cs,**/DbUp/Migrations/**,**/DbUp/Seeds/**</ExcludeByFile>
+
+          <IncludeDirectory>../src</IncludeDirectory>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

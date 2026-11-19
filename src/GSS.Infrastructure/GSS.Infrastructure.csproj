@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <!-- IStartupFilter, IHttpContextAccessor and the Microsoft.Extensions.* abstractions come from the shared
+         framework; adding them as PackageReference is redundant (NU1510). -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GSS.Core\GSS.Core.csproj" />
+    <ProjectReference Include="..\GSS.Util\GSS.Util.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="DbUp\**\*.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="DbUp\Migrations\" />
+    <Folder Include="DbUp\Seeds\Development\" />
+    <Folder Include="DbUp\Seeds\QA\" />
+    <Folder Include="DbUp\Seeds\UAT\" />
+    <Folder Include="DbUp\Seeds\Production\" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Caching.NET" />
+    <PackageReference Include="CodeStyle.NET" />
+    <PackageReference Include="Dapper" />
+    <PackageReference Include="dbup-postgresql" />
+    <PackageReference Include="HttpResilience.NET" />
+    <PackageReference Include="Npgsql" />
+  </ItemGroup>
+</Project>

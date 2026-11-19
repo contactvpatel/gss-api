@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\GSS.Core\GSS.Core.csproj" />
+    <ProjectReference Include="..\GSS.Util\GSS.Util.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Caching.NET" />
+    <PackageReference Include="CodeStyle.NET" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="Mapster" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+</Project>

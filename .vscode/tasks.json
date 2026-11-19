@@ -1,0 +1,50 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build: GSS.Api",
+            "detail": "dotnet build src/GSS.Api (used by the launch configurations)",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "${workspaceFolder}/src/GSS.Api/GSS.Api.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "watch: GSS.Api",
+            "detail": "dotnet watch run with hot reload",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "watch",
+                "run",
+                "--project",
+                "${workspaceFolder}/src/GSS.Api/GSS.Api.csproj",
+                "--launch-profile",
+                "https"
+            ],
+            "isBackground": true,
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "test: all",
+            "detail": "dotnet test GSS.slnx (unit + integration + architecture)",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "test",
+                "${workspaceFolder}/GSS.slnx"
+            ],
+            "group": "test",
+            "problemMatcher": "$msCompile"
+        }
+    ]
+}

@@ -1,0 +1,168 @@
+# Runs the GSS API with all of its dependencies in containers.
+#
+#   export NUGET_AUTH_TOKEN=$(gh auth token)   # token needs read:packages (private NuGet feed)
+#   docker compose up --build
+#
+# API:        https://localhost:7109/swagger    (self-signed certificate)
+# Telemetry:  http://localhost:18888            (Aspire dashboard: traces, metrics, logs)
+#
+# Local development only: credentials below are throwaway defaults and every port binds to 127.0.0.1.
+# Override any value in a .env file next to this one (see .env.example).
+#
+# Memory limits (~2.5 GB total) only stop one container starving the host; raise them for real data.
+
+name: gss
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    environment:
+      POSTGRES_DB: gss
+      POSTGRES_USER: ${POSTGRES_USER:-gss}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gss-local}
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d gss"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          # 256M maxmemory plus headroom for fragmentation and client buffers
+          memory: 384M
+    # Cache only: no persistence, and a hard memory bound so it cannot grow into the host
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-6380}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  otel-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:9.5
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          # Keeps telemetry in memory; 512M is plenty for a dev session
+          memory: 512M
+    environment:
+      # Local only: no login on the dashboard UI or the OTLP endpoint
+      DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+    ports:
+      - "127.0.0.1:${OTEL_DASHBOARD_HOST_PORT:-18888}:18888"
+    # No healthcheck: the chiseled image has no shell or curl. The API starts fine without the dashboard.
+
+  # The API rejects plain HTTP, so it serves HTTPS with a self-signed certificate generated once into a volume
+  certs:
+    image: alpine:3.22
+    # One-shot init container: it must stay exited so `service_completed_successfully` resolves.
+    restart: "no"
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        if [ -f /certs/tls.crt ] && [ -f /certs/tls.key ]; then exit 0; fi
+        apk add --no-cache openssl >/dev/null
+        openssl req -x509 -newkey rsa:2048 -nodes -days 825 \
+          -subj "/CN=localhost" \
+          -addext "subjectAltName=DNS:localhost,DNS:api,IP:127.0.0.1" \
+          -keyout /certs/tls.key -out /certs/tls.crt
+        # 1654 is the non-root "app" user in the .NET runtime image
+        chown 1654:1654 /certs/tls.key /certs/tls.crt
+        chmod 400 /certs/tls.key
+    volumes:
+      - certs:/certs
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      secrets:
+        - nuget_token
+    image: gss-api:local
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      certs:
+        condition: service_completed_successfully
+      otel-dashboard:
+        condition: service_started
+    environment:
+      # Development keeps Swagger UI enabled and runs any Seeds/Development scripts
+      AppSettings__Environment: Development
+      # 8443 is the published HTTPS listener. The plaintext probe listener binds to 127.0.0.1 (not "+") so only
+      # the container's healthcheck reaches it; any peer that could reach it could spoof X-Forwarded-Proto.
+      ASPNETCORE_URLS: https://+:8443;http://127.0.0.1:8080
+      Kestrel__Certificates__Default__Path: /https/tls.crt
+      Kestrel__Certificates__Default__KeyPath: /https/tls.key
+
+      DbConnectionSettings__Read__Host: postgres
+      DbConnectionSettings__Read__Port: "5432"
+      DbConnectionSettings__Read__DatabaseName: gss
+      DbConnectionSettings__Read__UserId: ${POSTGRES_USER:-gss}
+      DbConnectionSettings__Read__Password: ${POSTGRES_PASSWORD:-gss-local}
+      DbConnectionSettings__Read__SslMode: Disable
+      DbConnectionSettings__Write__Host: postgres
+      DbConnectionSettings__Write__Port: "5432"
+      DbConnectionSettings__Write__DatabaseName: gss
+      DbConnectionSettings__Write__UserId: ${POSTGRES_USER:-gss}
+      DbConnectionSettings__Write__Password: ${POSTGRES_PASSWORD:-gss-local}
+      DbConnectionSettings__Write__SslMode: Disable
+
+      CacheOptions__Enabled: "true"
+      CacheOptions__Mode: Redis
+      CacheOptions__EnvironmentPrefix: local
+      CacheOptions__Redis__Configuration: redis:6379,abortConnect=false
+
+      OpenTelemetryOptions__CollectorUrl: http://otel-dashboard:18889
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-7109}:8443"
+    volumes:
+      - certs:/https:ro
+    healthcheck:
+      # Package-free: the runtime image ships no curl/wget (see Dockerfile), so bash opens the socket itself.
+      test: ["CMD", "/bin/bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /internal/health/readiness HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && head -n 1 <&3 | grep -q ' 200 '"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
+secrets:
+  nuget_token:
+    environment: NUGET_AUTH_TOKEN
+
+volumes:
+  postgres-data:
+  certs:

@@ -1,0 +1,70 @@
+{
+    // Run/debug the API from VS Code (C# / C# Dev Kit extensions).
+    // HTTPS needs a trusted dev certificate once per machine: dotnet dev-certs https --trust
+    // Environment comes from AppSettings:Environment in appsettings.json (Development); do not set ASPNETCORE_ENVIRONMENT.
+    "version": "0.2.0",
+    "configurations": [
+        {
+            // Builds, runs on https://localhost:7109 and opens Swagger UI when the server is ready.
+            "name": "GSS.Api",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build: GSS.Api",
+            "program": "${workspaceFolder}/src/GSS.Api/bin/Debug/net10.0/GSS.Api.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/GSS.Api",
+            "stopAtEntry": false,
+            "console": "internalConsole",
+            "env": {
+                "ASPNETCORE_URLS": "https://localhost:7109",
+                "APP_BUILD_NUMBER": "local"
+            },
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
+                "uriFormat": "%s/swagger"
+            },
+            "justMyCode": true
+        },
+        {
+            // Same, without OpenTelemetry export (no collector on localhost:4317 needed).
+            "name": "GSS.Api (no telemetry)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build: GSS.Api",
+            "program": "${workspaceFolder}/src/GSS.Api/bin/Debug/net10.0/GSS.Api.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/GSS.Api",
+            "stopAtEntry": false,
+            "console": "internalConsole",
+            "env": {
+                "ASPNETCORE_URLS": "https://localhost:7109",
+                "APP_BUILD_NUMBER": "local",
+                "OpenTelemetryOptions__EnableTracing": "false",
+                "OpenTelemetryOptions__EnableMetrics": "false",
+                "OpenTelemetryOptions__EnableLogging": "false"
+            },
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
+                "uriFormat": "%s/swagger"
+            },
+            "justMyCode": true
+        },
+        {
+            // C# Dev Kit: uses the "https" profile in src/GSS.Api/Properties/launchSettings.json.
+            "name": "GSS.Api (Dev Kit, launchSettings)",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/src/GSS.Api/GSS.Api.csproj",
+            "launchConfigurationId": "TargetFramework=;https"
+        },
+        {
+            // Attach to an API already running (dotnet run, or a launch above started without debugging).
+            "name": "Attach to GSS.Api",
+            "type": "coreclr",
+            "request": "attach",
+            "processId": "${command:pickProcess}"
+        }
+    ]
+}
